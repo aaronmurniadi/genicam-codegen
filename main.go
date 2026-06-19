@@ -1,16 +1,20 @@
 // genicam-codegen generates type-safe Go code from a GenICam XML file.
 //
+// Install:
+//
+//	go install github.com/aaronmurniadi/genicam-codegen@latest
+//
 // Usage:
 //
-//	genicam-codegen -xml camera.xml -out ./genicam -pkg genicam
+//	genicam-codegen -i camera.xml -o ./genicam
 //
 // Flags:
 //
-//	-xml        Path to the GenICam XML file (required)
-//	-out        Output directory for generated files (default: "./genicam")
+//	-i          Path to the GenICam XML file (required)
+//	-o          Output directory for generated files (default: "./genicam")
 //	-pkg        Go package name (default: "genicam")
 //	-runtime    Import path of the runtime package
-//	            (default: "github.com/genicam-codegen/pkg/runtime")
+//	            (default: "github.com/aaronmurniadi/genicam-codegen/pkg/runtime")
 //	-visibility Minimum visibility to emit: Beginner|Expert|Guru|All
 //	            (default: Beginner)
 //	-v          Verbose output
@@ -23,16 +27,16 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/genicam-codegen/pkg/generator"
-	"github.com/genicam-codegen/pkg/parser"
+	"github.com/aaronmurniadi/genicam-codegen/pkg/generator"
+	"github.com/aaronmurniadi/genicam-codegen/pkg/parser"
 )
 
 func main() {
 	var (
-		xmlPath    = flag.String("xml", "", "Path to GenICam XML file (required)")
-		outDir     = flag.String("out", "./genicam", "Output directory")
+		xmlPath    = flag.String("i", "", "Path to GenICam XML file (required)")
+		outDir     = flag.String("o", "./genicam", "Output directory")
 		pkg        = flag.String("pkg", "genicam", "Go package name")
-		runtime    = flag.String("runtime", "github.com/genicam-codegen/pkg/runtime", "Runtime import path")
+		runtime    = flag.String("runtime", "github.com/aaronmurniadi/genicam-codegen/pkg/runtime", "Runtime import path")
 		visibility = flag.String("visibility", "Beginner", "Minimum visibility: Beginner|Expert|Guru|All")
 		verbose    = flag.Bool("v", false, "Verbose output")
 	)
@@ -43,7 +47,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// ── Parse ──────────────────────────────────────────────────────────────
 	f, err := os.Open(*xmlPath)
 	if err != nil {
 		log.Fatalf("open xml: %v", err)
@@ -65,7 +68,6 @@ func main() {
 		log.Printf("Categories: %d", len(rd.Categories))
 	}
 
-	// ── Generate ───────────────────────────────────────────────────────────
 	opts := generator.Options{
 		PackageName:   *pkg,
 		RuntimeImport: *runtime,
@@ -77,7 +79,6 @@ func main() {
 		log.Fatalf("generate: %v", err)
 	}
 
-	// ── Write ──────────────────────────────────────────────────────────────
 	if err := os.MkdirAll(*outDir, 0o755); err != nil {
 		log.Fatalf("mkdir: %v", err)
 	}

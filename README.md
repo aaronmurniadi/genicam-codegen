@@ -2,11 +2,30 @@
 
 Generate type-safe Go bindings from GenICam XML camera descriptions.
 
+## Install
+
+```bash
+go install github.com/aaronmurniadi/genicam-codegen@latest
+```
+
+This installs the `genicam-codegen` binary to your `$GOPATH/bin` (or `$HOME/go/bin`).
+
 ## Usage
 
 ```bash
-go run . -xml camera.xml -out ./genicam -pkg genicam
+genicam-codegen -i genicam.xml -o ./genicam
 ```
+
+### Flags
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `-i` | Path to GenICam XML file (required) | |
+| `-o` | Output directory | `./genicam` |
+| `-pkg` | Go package name | `genicam` |
+| `-runtime` | Runtime import path | module `pkg/runtime` |
+| `-visibility` | `Beginner`, `Expert`, `Guru`, or `All` | `Beginner` |
+| `-v` | Verbose output | |
 
 See [examples/README.md](examples/README.md) for a full generate-and-use walkthrough.
 

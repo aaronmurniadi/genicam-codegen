@@ -13,8 +13,8 @@ import (
 	"fmt"
 	"log"
 
-	camera "github.com/genicam-codegen/examples/generated"
-	"github.com/genicam-codegen/pkg/runtime"
+	camera "github.com/aaronmurniadi/genicam-codegen/examples/generated"
+	"github.com/aaronmurniadi/genicam-codegen/pkg/runtime"
 )
 
 func main() {

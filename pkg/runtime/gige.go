@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/genicam-codegen/pkg/gige/control"
+	"github.com/aaronmurniadi/genicam-codegen/pkg/gige/control"
 )
 
 // GigeNodeMap implements NodeMap using the pure-Go GigE Vision control layer

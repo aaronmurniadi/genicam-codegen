@@ -1,6 +1,6 @@
 # Examples
 
-Generate type-safe Go bindings from the sample GenICam XML at the repo root (`genicam.xml`).
+Generate type-safe Go bindings from the sample GenICam XML in this directory (`genicam.xml`).
 
 ## Generate bindings
 
@@ -8,6 +8,12 @@ From the repository root:
 
 ```bash
 go run ./examples/generate
+```
+
+Or after installing the CLI:
+
+```bash
+genicam-codegen -i examples/genicam.xml -o examples/generated -pkg camera
 ```
 
 This writes three files into `examples/generated/`:
@@ -20,12 +26,6 @@ This writes three files into `examples/generated/`:
 
 ```bash
 go run ./examples/generate -visibility Expert -v
-```
-
-You can also use the top-level CLI directly:
-
-```bash
-go run . -xml genicam.xml -out examples/generated -pkg camera
 ```
 
 Or regenerate via `go generate`:

@@ -8,7 +8,7 @@
 //
 //	go run .
 //
-//go:generate go run . -out ../generated
+//go:generate go run . -o ../generated
 package main
 
 import (
@@ -19,8 +19,8 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/genicam-codegen/pkg/generator"
-	"github.com/genicam-codegen/pkg/parser"
+	"github.com/aaronmurniadi/genicam-codegen/pkg/generator"
+	"github.com/aaronmurniadi/genicam-codegen/pkg/parser"
 )
 
 func defaultXMLPath() string {
@@ -28,8 +28,8 @@ func defaultXMLPath() string {
 	if !ok {
 		return "genicam.xml"
 	}
-	// examples/generate/main.go → repo root
-	return filepath.Join(filepath.Dir(file), "..", "..", "genicam.xml")
+	// examples/generate/main.go → examples/genicam.xml
+	return filepath.Join(filepath.Dir(file), "..", "genicam.xml")
 }
 
 func defaultOutDir() string {
@@ -41,10 +41,10 @@ func defaultOutDir() string {
 }
 
 func main() {
-	xmlPath := flag.String("xml", defaultXMLPath(), "path to GenICam XML")
-	outDir := flag.String("out", defaultOutDir(), "output directory for generated Go files")
+	xmlPath := flag.String("i", defaultXMLPath(), "path to GenICam XML")
+	outDir := flag.String("o", defaultOutDir(), "output directory for generated Go files")
 	pkg := flag.String("pkg", "camera", "Go package name")
-	runtimeImport := flag.String("runtime", "github.com/genicam-codegen/pkg/runtime", "runtime import path")
+	runtimeImport := flag.String("runtime", "github.com/aaronmurniadi/genicam-codegen/pkg/runtime", "runtime import path")
 	visibility := flag.String("visibility", "Beginner", "minimum visibility: Beginner|Expert|Guru|All")
 	verbose := flag.Bool("v", false, "verbose output")
 	flag.Parse()
