@@ -41,8 +41,9 @@ See [examples/README.md](examples/README.md) for a full generate-and-use walkthr
 
 | Path | Description |
 |------|-------------|
-| `cmd/genicam-codegen` | CLI entry point |
-| `main.go` | CLI entry point (also `cmd/genicam-codegen`)
+| `main.go` | CLI entry point |
+| `cmd/genicam-codegen` | Alternate CLI entry point (same binary) |
+| `internal/cli` | CLI implementation |
 | `pkg/parser` | GenICam XML parser |
 | `pkg/generator` | Go code generator |
 | `pkg/runtime` | `NodeMap` interface, mock and GigE implementations |
@@ -58,6 +59,11 @@ Copyright (c) 2022 Doug Watson. Licensed under the [MIT License](pkg/gige/LICENS
 Original repository: https://github.com/dougwatson/gige
 
 ## Changelog
+
+### v0.0.6
+
+- Restore root `main.go` so `go install github.com/aaronmurniadi/genicam-codegen@latest` works
+- Extract CLI logic into `internal/cli` (shared by root and `cmd/genicam-codegen`)
 
 ### v0.0.5
 
