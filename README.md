@@ -5,7 +5,7 @@ Generate type-safe Go bindings from GenICam XML camera descriptions.
 ## Install
 
 ```bash
-go install github.com/aaronmurniadi/genicam-codegen/cmd/genicam-codegen@latest
+go install github.com/aaronmurniadi/genicam-codegen@latest
 ```
 
 This installs the `genicam-codegen` binary to `$GOPATH/bin` (or `$HOME/go/bin`).
@@ -32,7 +32,7 @@ genicam-codegen -i genicam.xml -o ./genicam -visibility guru
 
 ```bash
 go test ./...
-go run ./cmd/genicam-codegen -i examples/genicam.xml -o examples/generated -pkg camera
+go run . -i examples/genicam.xml -o examples/generated -pkg camera
 ```
 
 See [examples/README.md](examples/README.md) for a full generate-and-use walkthrough.
@@ -42,6 +42,7 @@ See [examples/README.md](examples/README.md) for a full generate-and-use walkthr
 | Path | Description |
 |------|-------------|
 | `cmd/genicam-codegen` | CLI entry point |
+| `main.go` | CLI entry point (also `cmd/genicam-codegen`)
 | `pkg/parser` | GenICam XML parser |
 | `pkg/generator` | Go code generator |
 | `pkg/runtime` | `NodeMap` interface, mock and GigE implementations |
@@ -66,7 +67,7 @@ Original repository: https://github.com/dougwatson/gige
 - Remove debug stdout from `MockNodeMap`
 - Fix godoc comments on exported packages and APIs
 - Expand `.gitignore` and remove committed binary artifact
-- Update install path: `go install github.com/aaronmurniadi/genicam-codegen/cmd/genicam-codegen@latest`
+- Update install path: `go install github.com/aaronmurniadi/genicam-codegen@latest`
 
 ### v0.0.4
 
