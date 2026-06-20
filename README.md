@@ -24,7 +24,7 @@ genicam-codegen -i genicam.xml -o ./genicam
 | `-o` | Output directory | `./genicam` |
 | `-pkg` | Go package name | `genicam` |
 | `-runtime` | Runtime import path | module `pkg/runtime` |
-| `-visibility` | `Beginner`, `Expert`, `Guru`, or `All` | `Beginner` |
+| `-visibility` | Minimum feature visibility: `beginner`, `expert`, `guru` | `beginner` |
 | `-v` | Verbose output | |
 
 See [examples/README.md](examples/README.md) for a full generate-and-use walkthrough.

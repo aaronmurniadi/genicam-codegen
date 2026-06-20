@@ -26,20 +26,23 @@ type Options struct {
 	PackageName string
 	// RuntimeImport is the import path of the runtime package (default: "github.com/aaronmurniadi/genicam-codegen/pkg/runtime").
 	RuntimeImport string
-	// Visibility filters which features are emitted ("Beginner", "Expert", "Guru", "Invisible", "All").
+	// Visibility filters which features are emitted ("Beginner", "Expert", "Guru").
 	Visibility string
 }
 
-func (o *Options) apply() {
+func (o *Options) apply() error {
 	if o.PackageName == "" {
 		o.PackageName = "genicam"
 	}
 	if o.RuntimeImport == "" {
 		o.RuntimeImport = "github.com/aaronmurniadi/genicam-codegen/pkg/runtime"
 	}
-	if o.Visibility == "" {
-		o.Visibility = "Beginner"
+	v, err := normalizeVisibility(o.Visibility)
+	if err != nil {
+		return err
 	}
+	o.Visibility = v
+	return nil
 }
 
 // Files is the map of filename → formatted Go source.
@@ -47,7 +50,9 @@ type Files map[string][]byte
 
 // Generate produces Go source files from a parsed RegisterDescription.
 func Generate(rd *parser.RegisterDescription, opts Options) (Files, error) {
-	opts.apply()
+	if err := opts.apply(); err != nil {
+		return nil, err
+	}
 
 	files := make(Files)
 
@@ -129,7 +134,7 @@ func genEnums(rd *parser.RegisterDescription, opts Options) ([]byte, error) {
 	// Collect all enumerations, sorted for determinism
 	var enums []*parser.Node
 	for _, n := range rd.Nodes {
-		if n.Kind == parser.KindEnumeration {
+		if n.Kind == parser.KindEnumeration && nodeVisible(n, opts) {
 			enums = append(enums, n)
 		}
 	}
@@ -191,8 +196,8 @@ func genMain(rd *parser.RegisterDescription, opts Options) ([]byte, error) {
 	fmt.Fprintf(w, ")\n\n")
 	fmt.Fprintf(w, "var _ = fmt.Sprintf // ensure fmt is used\n\n")
 
-	// Collect categories
-	categories := collectCategories(rd)
+	// Collect categories that have at least one visible feature.
+	categories := visibleCategories(rd, opts)
 
 	// Device struct – top-level entry point
 	fmt.Fprintf(w, "// Device is the generated type-safe entry point for the camera.\n")
@@ -221,8 +226,8 @@ func genMain(rd *parser.RegisterDescription, opts Options) ([]byte, error) {
 		}
 	}
 
-	// Flatten: nodes not in any recognised category go into a RootCategory
-	rootNodes := nodesWithoutCategory(rd, categories)
+	// Flatten: nodes not in any recognised category go into UncategorizedCategory
+	rootNodes := visibleNodesWithoutCategory(rd, categories, opts)
 	if len(rootNodes) > 0 {
 		if err := genLooseNodes(w, rd, rootNodes, opts); err != nil {
 			return nil, err
@@ -250,6 +255,9 @@ func genCategory(w *bytes.Buffer, rd *parser.RegisterDescription, cat *parser.No
 		if child.Kind == parser.KindCategory {
 			continue // sub-categories are already top-level structs
 		}
+		if !nodeVisible(child, opts) {
+			continue
+		}
 		if _, dup := seen[child.GoName]; dup {
 			continue
 		}
@@ -266,6 +274,9 @@ func genLooseNodes(w *bytes.Buffer, rd *parser.RegisterDescription, nodes []*par
 	fmt.Fprintf(w, "type UncategorizedCategory struct { dev runtime.NodeMap }\n\n")
 	seen := make(map[string]struct{})
 	for _, n := range nodes {
+		if !nodeVisible(n, opts) {
+			continue
+		}
 		if _, dup := seen[n.GoName]; dup {
 			continue
 		}
@@ -431,6 +442,87 @@ func sanitizeComment(s string) string {
 	s = strings.ReplaceAll(s, "\n", " ")
 	s = strings.ReplaceAll(s, "\r", "")
 	return s
+}
+
+func NormalizeVisibility(s string) (string, error) {
+	return normalizeVisibility(s)
+}
+
+func normalizeVisibility(s string) (string, error) {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "", "beginner":
+		return "Beginner", nil
+	case "expert":
+		return "Expert", nil
+	case "guru":
+		return "Guru", nil
+	default:
+		return "", fmt.Errorf("invalid visibility %q: want beginner, expert, or guru", s)
+	}
+}
+
+func visibilityRank(v parser.Visibility) int {
+	switch v {
+	case parser.VisiExpert:
+		return 1
+	case parser.VisiGuru:
+		return 2
+	case parser.VisiInvisible:
+		return 99
+	default:
+		return 0
+	}
+}
+
+func maxVisibilityRank(level string) int {
+	switch level {
+	case "Expert":
+		return 1
+	case "Guru":
+		return 2
+	default:
+		return 0
+	}
+}
+
+func nodeVisible(n *parser.Node, opts Options) bool {
+	if n.Visibility == parser.VisiInvisible {
+		return false
+	}
+	return visibilityRank(n.Visibility) <= maxVisibilityRank(opts.Visibility)
+}
+
+func visibleCategories(rd *parser.RegisterDescription, opts Options) []*parser.Node {
+	var out []*parser.Node
+	for _, cat := range collectCategories(rd) {
+		if categoryHasVisibleChild(rd, cat, opts) {
+			out = append(out, cat)
+		}
+	}
+	return out
+}
+
+func categoryHasVisibleChild(rd *parser.RegisterDescription, cat *parser.Node, opts Options) bool {
+	for _, childName := range cat.Children {
+		child, ok := rd.Nodes[childName]
+		if !ok || child.Kind == parser.KindCategory {
+			continue
+		}
+		if nodeVisible(child, opts) {
+			return true
+		}
+	}
+	return false
+}
+
+func visibleNodesWithoutCategory(rd *parser.RegisterDescription, cats []*parser.Node, opts Options) []*parser.Node {
+	var out []*parser.Node
+	for _, n := range nodesWithoutCategory(rd, cats) {
+		if nodeVisible(n, opts) {
+			out = append(out, n)
+		}
+	}
+	return out
 }
 
 func collectCategories(rd *parser.RegisterDescription) []*parser.Node {

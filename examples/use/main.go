@@ -1,15 +1,17 @@
-// Command use demonstrates calling generated camera bindings with MockNodeMap.
+// Command use demonstrates calling generated camera bindings over GigE Vision.
 //
 // Generate bindings first:
 //
 //	go run ./examples/generate
 //
-// Then run this example:
+// Then run against a connected camera:
 //
-//	go run ./examples/use
+//	go run ./examples/use -a 192.168.1.108
+//	go run ./examples/use -d en0 -a 192.168.1.108
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 
@@ -18,20 +20,26 @@ import (
 )
 
 func main() {
-	mock := runtime.NewMockNodeMap()
-	mock.Seed("AcquisitionFrameCount", int64(42))
+	device := flag.String("d", "", "local network interface (e.g. en0); auto-detect if empty")
+	cameraIP := flag.String("a", "192.168.1.108", "camera IP address")
+	flag.Parse()
 
-	cam := camera.New(mock)
-
-	if err := cam.AcquisitionControl.AcquisitionStart(); err != nil {
-		log.Fatalf("AcquisitionStart: %v", err)
-	}
-
-	count, err := cam.AcquisitionControl.GetAcquisitionFrameCount()
+	nm, err := runtime.OpenGigeNodeMap(*device, *cameraIP)
 	if err != nil {
-		log.Fatalf("GetAcquisitionFrameCount: %v", err)
+		log.Fatalf("open camera: %v", err)
 	}
 
-	fmt.Printf("AcquisitionFrameCount = %d\n", count)
-	fmt.Printf("Commands executed: %v\n", mock.ExecutedCommands())
+	cam := camera.New(nm)
+
+	width, err := cam.MonoImageFormatControl.GetWidth()
+	if err != nil {
+		log.Fatalf("GetWidth: %v", err)
+	}
+	height, err := cam.MonoImageFormatControl.GetHeight()
+	if err != nil {
+		log.Fatalf("GetHeight: %v", err)
+	}
+
+	fmt.Printf("Width  = %d\n", width)
+	fmt.Printf("Height = %d\n", height)
 }

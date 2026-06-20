@@ -6,18 +6,18 @@
 //
 // Usage:
 //
-//	genicam-codegen -i camera.xml -o ./genicam
+//	genicam-codegen -i camera.xml -o ./genicam -visibility expert
 //
 // Flags:
 //
-//	-i          Path to the GenICam XML file (required)
-//	-o          Output directory for generated files (default: "./genicam")
-//	-pkg        Go package name (default: "genicam")
-//	-runtime    Import path of the runtime package
-//	            (default: "github.com/aaronmurniadi/genicam-codegen/pkg/runtime")
-//	-visibility Minimum visibility to emit: Beginner|Expert|Guru|All
-//	            (default: Beginner)
-//	-v          Verbose output
+//	-i            Path to the GenICam XML file (required)
+//	-o            Output directory for generated files (default: "./genicam")
+//	-pkg          Go package name (default: "genicam")
+//	-runtime      Import path of the runtime package
+//	              (default: "github.com/aaronmurniadi/genicam-codegen/pkg/runtime")
+//	-visibility   Minimum feature visibility: beginner, expert, guru
+//	              (default: beginner)
+//	-v            Verbose output
 package main
 
 import (
@@ -37,7 +37,7 @@ func main() {
 		outDir     = flag.String("o", "./genicam", "Output directory")
 		pkg        = flag.String("pkg", "genicam", "Go package name")
 		runtime    = flag.String("runtime", "github.com/aaronmurniadi/genicam-codegen/pkg/runtime", "Runtime import path")
-		visibility = flag.String("visibility", "Beginner", "Minimum visibility: Beginner|Expert|Guru|All")
+		visibility = flag.String("visibility", "beginner", "Minimum feature visibility: beginner, expert, guru")
 		verbose    = flag.Bool("v", false, "Verbose output")
 	)
 	flag.Parse()
@@ -68,10 +68,15 @@ func main() {
 		log.Printf("Categories: %d", len(rd.Categories))
 	}
 
+	vis, err := generator.NormalizeVisibility(*visibility)
+	if err != nil {
+		log.Fatalf("visibility: %v", err)
+	}
+
 	opts := generator.Options{
 		PackageName:   *pkg,
 		RuntimeImport: *runtime,
-		Visibility:    *visibility,
+		Visibility:    vis,
 	}
 
 	files, err := generator.Generate(rd, opts)
@@ -96,5 +101,5 @@ func main() {
 	fmt.Printf("Generated %d file(s) in %s\n", len(files), *outDir)
 	fmt.Printf("  Package : %s\n", *pkg)
 	fmt.Printf("  Model   : %s %s\n", rd.VendorName, rd.ModelName)
-	fmt.Printf("  Features: %d\n", len(rd.Nodes))
+	fmt.Printf("  Visibility: %s\n", vis)
 }

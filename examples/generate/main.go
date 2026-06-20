@@ -45,7 +45,7 @@ func main() {
 	outDir := flag.String("o", defaultOutDir(), "output directory for generated Go files")
 	pkg := flag.String("pkg", "camera", "Go package name")
 	runtimeImport := flag.String("runtime", "github.com/aaronmurniadi/genicam-codegen/pkg/runtime", "runtime import path")
-	visibility := flag.String("visibility", "Beginner", "minimum visibility: Beginner|Expert|Guru|All")
+	visibility := flag.String("visibility", "beginner", "minimum feature visibility: beginner, expert, guru")
 	verbose := flag.Bool("v", false, "verbose output")
 	flag.Parse()
 
@@ -64,10 +64,15 @@ func main() {
 		log.Fatalf("parse xml: %v", err)
 	}
 
+	vis, err := generator.NormalizeVisibility(*visibility)
+	if err != nil {
+		log.Fatalf("visibility: %v", err)
+	}
+
 	opts := generator.Options{
 		PackageName:   *pkg,
 		RuntimeImport: *runtimeImport,
-		Visibility:    *visibility,
+		Visibility:    vis,
 	}
 
 	files, err := generator.Generate(rd, opts)
@@ -92,5 +97,5 @@ func main() {
 	fmt.Printf("Generated %d file(s) in %s\n", len(files), *outDir)
 	fmt.Printf("  Package : %s\n", *pkg)
 	fmt.Printf("  Model   : %s %s\n", rd.VendorName, rd.ModelName)
-	fmt.Printf("  Features: %d\n", len(rd.Nodes))
+	fmt.Printf("  Visibility: %s\n", vis)
 }

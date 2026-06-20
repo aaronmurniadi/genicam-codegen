@@ -36,29 +36,18 @@ go generate ./examples/generate
 
 ## Use generated bindings
 
-After generating, run the mock-camera demo:
+After generating, run the GigE camera example (camera must be reachable on the network):
 
 ```bash
-go run ./examples/use
+go run ./examples/use -a 192.168.1.108
+go run ./examples/use -d en0 -a 192.168.1.108
 ```
 
-Expected output:
+Expected output (values depend on your camera):
 
 ```
-AcquisitionFrameCount = 42
-Commands executed: [AcquisitionStart]
+Width  = 2448
+Height = 2048
 ```
 
-## Connect to a real camera
-
-Swap `MockNodeMap` for `GigeNodeMap` when talking to a GigE Vision camera:
-
-```go
-nm, err := runtime.OpenGigeNodeMap("en0", "192.168.1.108")
-if err != nil {
-    log.Fatal(err)
-}
-cam := camera.New(nm)
-```
-
-See `pkg/gige/control` for GigE transport details. Upstream source: [dougwatson/gige](https://github.com/dougwatson/gige).
+Features not in the built-in GigE register bank need hex addresses on `GigeNodeMap.Addresses`. See `pkg/gige/control` for transport details.
