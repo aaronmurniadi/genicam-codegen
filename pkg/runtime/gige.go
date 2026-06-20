@@ -22,8 +22,8 @@ import (
 //	cam := control.NewCamera(hostIP, cameraIP, control.STREAM_PORT, modelName)
 //	nm := runtime.NewGigeNodeMap(cam, conn)
 type GigeNodeMap struct {
-	mu sync.Mutex
-	cam control.Camera
+	mu   sync.Mutex
+	cam  control.Camera
 	conn *net.UDPConn
 	// Addresses maps GenICam feature names to 8-digit hex register addresses.
 	Addresses map[string]string

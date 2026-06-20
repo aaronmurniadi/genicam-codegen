@@ -10,7 +10,6 @@ package runtime
 // your main package, keeping the generated layer transport-agnostic.
 
 import (
-	"fmt"
 	"sync"
 )
 
@@ -83,7 +82,6 @@ func (m *MockNodeMap) ExecuteCommand(feature string) error {
 	m.mu.Lock()
 	m.commands = append(m.commands, feature)
 	m.mu.Unlock()
-	fmt.Printf("[MockNodeMap] ExecuteCommand(%q)\n", feature)
 	return nil
 }
 
@@ -100,7 +98,6 @@ func (m *MockNodeMap) SetInteger(feature string, value int64) error {
 	m.mu.Lock()
 	m.integers[feature] = value
 	m.mu.Unlock()
-	fmt.Printf("[MockNodeMap] SetInteger(%q, %d)\n", feature, value)
 	return nil
 }
 
@@ -117,7 +114,6 @@ func (m *MockNodeMap) SetFloat(feature string, value float64) error {
 	m.mu.Lock()
 	m.floats[feature] = value
 	m.mu.Unlock()
-	fmt.Printf("[MockNodeMap] SetFloat(%q, %f)\n", feature, value)
 	return nil
 }
 
@@ -131,7 +127,6 @@ func (m *MockNodeMap) SetBoolean(feature string, value bool) error {
 	m.mu.Lock()
 	m.booleans[feature] = value
 	m.mu.Unlock()
-	fmt.Printf("[MockNodeMap] SetBoolean(%q, %v)\n", feature, value)
 	return nil
 }
 
@@ -145,7 +140,6 @@ func (m *MockNodeMap) SetEnumeration(feature string, value int64) error {
 	m.mu.Lock()
 	m.enums[feature] = value
 	m.mu.Unlock()
-	fmt.Printf("[MockNodeMap] SetEnumeration(%q, %d)\n", feature, value)
 	return nil
 }
 
@@ -159,7 +153,6 @@ func (m *MockNodeMap) SetString(feature string, value string) error {
 	m.mu.Lock()
 	m.strings[feature] = value
 	m.mu.Unlock()
-	fmt.Printf("[MockNodeMap] SetString(%q, %q)\n", feature, value)
 	return nil
 }
 

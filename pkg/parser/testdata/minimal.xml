@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RegisterDescription ModelName="TestCam" VendorName="Test" xmlns="http://www.genicam.org/GenApi/Version_1_1">
+	<Category Name="DeviceControl">
+		<pFeature>Width</pFeature>
+		<pFeature>GuruFeature</pFeature>
+		<pFeature>ExpertFeature</pFeature>
+	</Category>
+	<Integer Name="Width">
+		<Visibility>Beginner</Visibility>
+		<AccessMode>RW</AccessMode>
+	</Integer>
+	<Integer Name="ExpertFeature">
+		<Visibility>Expert</Visibility>
+		<AccessMode>RW</AccessMode>
+	</Integer>
+	<Integer Name="GuruFeature">
+		<Visibility>Guru</Visibility>
+		<AccessMode>RW</AccessMode>
+	</Integer>
+</RegisterDescription>

@@ -1,13 +1,5 @@
+// Package generator walks the parser IR and emits type-safe Go camera bindings.
 package generator
-
-// Package generator walks the parser IR and emits Go source code.
-//
-// Generated code layout
-// ─────────────────────
-//   <outpkg>/
-//     genicam.go          – Device interface, category structs, feature methods
-//     enums.go            – All enum types and their constants
-//     doc.go              – Package-level documentation
 
 import (
 	"bytes"
@@ -45,7 +37,7 @@ func (o *Options) apply() error {
 	return nil
 }
 
-// Files is the map of filename → formatted Go source.
+// Files maps output filenames to formatted Go source.
 type Files map[string][]byte
 
 // Generate produces Go source files from a parsed RegisterDescription.
@@ -444,6 +436,7 @@ func sanitizeComment(s string) string {
 	return s
 }
 
+// NormalizeVisibility parses and canonicalizes a visibility flag value.
 func NormalizeVisibility(s string) (string, error) {
 	return normalizeVisibility(s)
 }

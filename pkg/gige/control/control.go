@@ -1,4 +1,4 @@
-// GigE Vision control protocol support.
+// Package control implements GigE Vision camera register read/write over UDP.
 //
 // Derived from https://github.com/dougwatson/gige (MIT License, Copyright (c) 2022 Doug Watson).
 package control
