@@ -31,15 +31,15 @@ func main() {
 
 	cam := camera.New(nm)
 
-	width, err := cam.MonoImageFormatControl.GetWidth()
+	width, err := cam.MonoImageFormatControl.GetSensorWidth()
 	if err != nil {
-		log.Fatalf("GetWidth: %v", err)
+		log.Fatalf("GetSensorWidth: %v", err)
 	}
-	height, err := cam.MonoImageFormatControl.GetHeight()
+	height, err := cam.MonoImageFormatControl.GetSensorHeight()
 	if err != nil {
-		log.Fatalf("GetHeight: %v", err)
+		log.Fatalf("GetSensorHeight: %v", err)
 	}
 
-	fmt.Printf("Width  = %d\n", width)
-	fmt.Printf("Height = %d\n", height)
+	fmt.Printf("SensorWidth  = %d\n", width)
+	fmt.Printf("SensorHeight = %d\n", height)
 }
