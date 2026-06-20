@@ -28,11 +28,46 @@ genicam-codegen -i genicam.xml -o ./genicam -visibility guru
 | `-visibility` | Minimum feature visibility: `beginner`, `expert`, `guru` | `beginner` |
 | `-v` | Verbose output | |
 
-## Development
+
+## Extract GenICam XML from a camera
+
+Use [Aravis](https://github.com/AravisProject/aravis) `arv-tool-0.8` to dump the camera's GenICam description before generating bindings.
+
+### Install Aravis
 
 ```bash
-go test ./...
-go run . -i examples/genicam.xml -o examples/generated -pkg camera
+# macOS
+brew install aravis
+
+# Ubuntu / Debian
+sudo apt-get install aravis-tools
+```
+
+### Discover the camera
+
+Connect the camera to your network, then list devices:
+
+```bash
+arv-tool-0.8
+```
+### Dump the XML
+
+By IP address:
+
+```bash
+arv-tool-0.8 -a 192.168.1.108 genicam > genicam.xml
+```
+
+Or if you only have one camera connected:
+
+```bash
+arv-tool-0.8 genicam > genicam.xml
+```
+
+### Generate bindings
+
+```bash
+genicam-codegen -i genicam.xml -o ./genicam
 ```
 
 See [examples/README.md](examples/README.md) for a full generate-and-use walkthrough.
