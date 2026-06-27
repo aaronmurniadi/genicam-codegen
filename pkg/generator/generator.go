@@ -82,9 +82,10 @@ var headerTmpl = template.Must(template.New("header").Parse(`// Code generated b
 //	import "your/module/pkg/runtime"
 //	import cam "your/module/internal/camera"
 //
-//	nm, err := runtime.OpenGigeNodeMap(device, cameraIP)
-//	cam := cam.New(nm)
-//	cam.TriggerControl.TriggerSoftware()
+//	cam := camera.New()
+//	port, err := cam.EthernetTransferCtl.GetTCPPort()
+//
+// Optional: camera.NewWithIP("en0", "192.168.1.108") or camera.NewWithNodeMap(nm) for persistent sessions.
 package {{.Pkg}}
 `))
 
@@ -163,14 +164,62 @@ func writeEnums(w *bytes.Buffer, rd *parser.RegisterDescription, opts Options) {
 // Device, category structs, feature methods
 // ──────────────────────────────────────────────────────────────────────────────
 
+func writeFeatureAddresses(w *bytes.Buffer, rd *parser.RegisterDescription, opts Options) {
+	addrs := collectFeatureAddresses(rd, opts)
+	if len(addrs) == 0 {
+		fmt.Fprintf(w, "var featureAddresses map[string]string\n\n")
+		return
+	}
+	fmt.Fprintf(w, "var featureAddresses = map[string]string{\n")
+	names := make([]string, 0, len(addrs))
+	for name := range addrs {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		fmt.Fprintf(w, "\t%q: %q,\n", name, addrs[name])
+	}
+	fmt.Fprintf(w, "}\n\n")
+}
+
+func collectFeatureAddresses(rd *parser.RegisterDescription, opts Options) map[string]string {
+	addrs := make(map[string]string)
+	for _, n := range rd.Nodes {
+		if n.Kind == parser.KindCategory || !nodeVisible(n, opts) {
+			continue
+		}
+		if n.RegisterAddr != "" {
+			addrs[n.Name] = n.RegisterAddr
+		}
+	}
+	return addrs
+}
+
+func writeGigeCaller(w *bytes.Buffer) {
+	fmt.Fprintf(w, "// gigeCaller auto-discovers and connects to a GigE camera per call (arv-tool style).\n")
+	fmt.Fprintf(w, "type gigeCaller struct {\n")
+	fmt.Fprintf(w, "\tdev   runtime.NodeMap\n")
+	fmt.Fprintf(w, "\tcfg   runtime.GigeConfig\n")
+	fmt.Fprintf(w, "\taddrs map[string]string\n")
+	fmt.Fprintf(w, "}\n\n")
+	fmt.Fprintf(w, "func (g *gigeCaller) withNodeMap(fn func(runtime.NodeMap) error) error {\n")
+	fmt.Fprintf(w, "\tif g.dev != nil {\n")
+	fmt.Fprintf(w, "\t\treturn fn(g.dev)\n")
+	fmt.Fprintf(w, "\t}\n")
+	fmt.Fprintf(w, "\treturn g.cfg.WithNodeMap(g.addrs, fn)\n")
+	fmt.Fprintf(w, "}\n\n")
+}
+
 func writeDevice(w *bytes.Buffer, rd *parser.RegisterDescription, opts Options) error {
 	categories := visibleCategories(rd, opts)
 	looseNodes := visibleNodesWithoutCategory(rd, categories, opts)
 
+	writeFeatureAddresses(w, rd, opts)
+	writeGigeCaller(w)
+
 	fmt.Fprintf(w, "// Device is the generated type-safe entry point for the camera.\n")
-	fmt.Fprintf(w, "// Instantiate it with New(dev).\n")
 	fmt.Fprintf(w, "type Device struct {\n")
-	fmt.Fprintf(w, "\tdev runtime.NodeMap\n")
+	fmt.Fprintf(w, "\tcaller *gigeCaller\n")
 	for _, cat := range categories {
 		fmt.Fprintf(w, "\t// %s – %s\n", cat.GoName, sanitizeComment(cat.ToolTip))
 		fmt.Fprintf(w, "\t%s *%sCategory\n", cat.GoName, cat.GoName)
@@ -181,16 +230,32 @@ func writeDevice(w *bytes.Buffer, rd *parser.RegisterDescription, opts Options) 
 	}
 	fmt.Fprintf(w, "}\n\n")
 
-	fmt.Fprintf(w, "// New creates a Device backed by the given NodeMap.\n")
-	fmt.Fprintf(w, "func New(dev runtime.NodeMap) *Device {\n")
-	fmt.Fprintf(w, "\td := &Device{dev: dev}\n")
+	fmt.Fprintf(w, "// New creates a Device that auto-discovers a GigE camera on each method call.\n")
+	fmt.Fprintf(w, "func New() *Device {\n")
+	fmt.Fprintf(w, "\td := &Device{caller: &gigeCaller{addrs: featureAddresses}}\n")
+	fmt.Fprintf(w, "\td.initCategories()\n")
+	fmt.Fprintf(w, "\treturn d\n}\n\n")
+
+	fmt.Fprintf(w, "// NewWithIP targets a specific camera. Pass cameraIP \"\" to broadcast-discover.\n")
+	fmt.Fprintf(w, "func NewWithIP(device, cameraIP string) *Device {\n")
+	fmt.Fprintf(w, "\td := New()\n")
+	fmt.Fprintf(w, "\td.caller.cfg = runtime.GigeConfig{Device: device, CameraIP: cameraIP}\n")
+	fmt.Fprintf(w, "\treturn d\n}\n\n")
+
+	fmt.Fprintf(w, "// NewWithNodeMap uses a persistent NodeMap (testing or manual connection management).\n")
+	fmt.Fprintf(w, "func NewWithNodeMap(dev runtime.NodeMap) *Device {\n")
+	fmt.Fprintf(w, "\td := New()\n")
+	fmt.Fprintf(w, "\td.caller.dev = dev\n")
+	fmt.Fprintf(w, "\treturn d\n}\n\n")
+
+	fmt.Fprintf(w, "func (d *Device) initCategories() {\n")
 	for _, cat := range categories {
-		fmt.Fprintf(w, "\td.%s = &%sCategory{dev: dev}\n", cat.GoName, cat.GoName)
+		fmt.Fprintf(w, "\td.%s = &%sCategory{caller: d.caller}\n", cat.GoName, cat.GoName)
 	}
 	if len(looseNodes) > 0 {
-		fmt.Fprintf(w, "\td.Uncategorized = &UncategorizedCategory{dev: dev}\n")
+		fmt.Fprintf(w, "\td.Uncategorized = &UncategorizedCategory{caller: d.caller}\n")
 	}
-	fmt.Fprintf(w, "\treturn d\n}\n\n")
+	fmt.Fprintf(w, "}\n\n")
 
 	for _, cat := range categories {
 		if err := genCategory(w, rd, cat, opts); err != nil {
@@ -211,7 +276,7 @@ func genCategory(w *bytes.Buffer, rd *parser.RegisterDescription, cat *parser.No
 	if cat.ToolTip != "" {
 		fmt.Fprintf(w, "// %s\n", sanitizeComment(cat.ToolTip))
 	}
-	fmt.Fprintf(w, "type %sCategory struct { dev runtime.NodeMap }\n\n", cat.GoName)
+	fmt.Fprintf(w, "type %sCategory struct { caller *gigeCaller }\n\n", cat.GoName)
 
 	seen := make(map[string]struct{})
 	for _, childName := range cat.Children {
@@ -238,7 +303,7 @@ func genCategory(w *bytes.Buffer, rd *parser.RegisterDescription, cat *parser.No
 
 func genLooseNodes(w *bytes.Buffer, rd *parser.RegisterDescription, nodes []*parser.Node, opts Options) error {
 	fmt.Fprintf(w, "// UncategorizedCategory holds features not assigned to a named category.\n")
-	fmt.Fprintf(w, "type UncategorizedCategory struct { dev runtime.NodeMap }\n\n")
+	fmt.Fprintf(w, "type UncategorizedCategory struct { caller *gigeCaller }\n\n")
 	seen := make(map[string]struct{})
 	for _, n := range nodes {
 		if !nodeVisible(n, opts) {
@@ -282,8 +347,9 @@ func emitCommand(w *bytes.Buffer, recv string, n *parser.Node) {
 	doc := featureDoc(n)
 	fmt.Fprintf(w, "%s// %s executes the %q command.\n", doc, n.GoName, n.Name)
 	fmt.Fprintf(w, "func (c *%s) %s() error {\n", recv, n.GoName)
-	fmt.Fprintf(w, "\treturn c.dev.ExecuteCommand(%q)\n", n.Name)
-	fmt.Fprintf(w, "}\n\n")
+	fmt.Fprintf(w, "\treturn c.caller.withNodeMap(func(dev runtime.NodeMap) error {\n")
+	fmt.Fprintf(w, "\t\treturn dev.ExecuteCommand(%q)\n", n.Name)
+	fmt.Fprintf(w, "\t})\n}\n\n")
 }
 
 func emitInteger(w *bytes.Buffer, recv string, n *parser.Node) {
@@ -297,8 +363,13 @@ func emitInteger(w *bytes.Buffer, recv string, n *parser.Node) {
 			fmt.Fprintf(w, "// Unit: %s\n", n.Unit)
 		}
 		fmt.Fprintf(w, "func (c *%s) Get%s() (int64, error) {\n", recv, n.GoName)
-		fmt.Fprintf(w, "\treturn c.dev.GetInteger(%q)\n", n.Name)
-		fmt.Fprintf(w, "}\n\n")
+		fmt.Fprintf(w, "\tvar v int64\n")
+		fmt.Fprintf(w, "\terr := c.caller.withNodeMap(func(dev runtime.NodeMap) error {\n")
+		fmt.Fprintf(w, "\t\tvar e error\n")
+		fmt.Fprintf(w, "\t\tv, e = dev.GetInteger(%q)\n", n.Name)
+		fmt.Fprintf(w, "\t\treturn e\n")
+		fmt.Fprintf(w, "\t})\n")
+		fmt.Fprintf(w, "\treturn v, err\n}\n\n")
 	}
 	if canWrite {
 		fmt.Fprintf(w, "// Set%s sets the %q integer value.\n", n.GoName, n.Name)
@@ -310,8 +381,9 @@ func emitInteger(w *bytes.Buffer, recv string, n *parser.Node) {
 			fmt.Fprintf(w, "\n")
 		}
 		fmt.Fprintf(w, "func (c *%s) Set%s(v int64) error {\n", recv, n.GoName)
-		fmt.Fprintf(w, "\treturn c.dev.SetInteger(%q, v)\n", n.Name)
-		fmt.Fprintf(w, "}\n\n")
+		fmt.Fprintf(w, "\treturn c.caller.withNodeMap(func(dev runtime.NodeMap) error {\n")
+		fmt.Fprintf(w, "\t\treturn dev.SetInteger(%q, v)\n", n.Name)
+		fmt.Fprintf(w, "\t})\n}\n\n")
 	}
 }
 
@@ -322,14 +394,20 @@ func emitFloat(w *bytes.Buffer, recv string, n *parser.Node) {
 	if canRead {
 		fmt.Fprintf(w, "// Get%s returns the %q float value.\n", n.GoName, n.Name)
 		fmt.Fprintf(w, "func (c *%s) Get%s() (float64, error) {\n", recv, n.GoName)
-		fmt.Fprintf(w, "\treturn c.dev.GetFloat(%q)\n", n.Name)
-		fmt.Fprintf(w, "}\n\n")
+		fmt.Fprintf(w, "\tvar v float64\n")
+		fmt.Fprintf(w, "\terr := c.caller.withNodeMap(func(dev runtime.NodeMap) error {\n")
+		fmt.Fprintf(w, "\t\tvar e error\n")
+		fmt.Fprintf(w, "\t\tv, e = dev.GetFloat(%q)\n", n.Name)
+		fmt.Fprintf(w, "\t\treturn e\n")
+		fmt.Fprintf(w, "\t})\n")
+		fmt.Fprintf(w, "\treturn v, err\n}\n\n")
 	}
 	if canWrite {
 		fmt.Fprintf(w, "// Set%s sets the %q float value.\n", n.GoName, n.Name)
 		fmt.Fprintf(w, "func (c *%s) Set%s(v float64) error {\n", recv, n.GoName)
-		fmt.Fprintf(w, "\treturn c.dev.SetFloat(%q, v)\n", n.Name)
-		fmt.Fprintf(w, "}\n\n")
+		fmt.Fprintf(w, "\treturn c.caller.withNodeMap(func(dev runtime.NodeMap) error {\n")
+		fmt.Fprintf(w, "\t\treturn dev.SetFloat(%q, v)\n", n.Name)
+		fmt.Fprintf(w, "\t})\n}\n\n")
 	}
 }
 
@@ -340,14 +418,20 @@ func emitBoolean(w *bytes.Buffer, recv string, n *parser.Node) {
 	if canRead {
 		fmt.Fprintf(w, "// Get%s returns the %q boolean value.\n", n.GoName, n.Name)
 		fmt.Fprintf(w, "func (c *%s) Get%s() (bool, error) {\n", recv, n.GoName)
-		fmt.Fprintf(w, "\treturn c.dev.GetBoolean(%q)\n", n.Name)
-		fmt.Fprintf(w, "}\n\n")
+		fmt.Fprintf(w, "\tvar v bool\n")
+		fmt.Fprintf(w, "\terr := c.caller.withNodeMap(func(dev runtime.NodeMap) error {\n")
+		fmt.Fprintf(w, "\t\tvar e error\n")
+		fmt.Fprintf(w, "\t\tv, e = dev.GetBoolean(%q)\n", n.Name)
+		fmt.Fprintf(w, "\t\treturn e\n")
+		fmt.Fprintf(w, "\t})\n")
+		fmt.Fprintf(w, "\treturn v, err\n}\n\n")
 	}
 	if canWrite {
 		fmt.Fprintf(w, "// Set%s sets the %q boolean value.\n", n.GoName, n.Name)
 		fmt.Fprintf(w, "func (c *%s) Set%s(v bool) error {\n", recv, n.GoName)
-		fmt.Fprintf(w, "\treturn c.dev.SetBoolean(%q, v)\n", n.Name)
-		fmt.Fprintf(w, "}\n\n")
+		fmt.Fprintf(w, "\treturn c.caller.withNodeMap(func(dev runtime.NodeMap) error {\n")
+		fmt.Fprintf(w, "\t\treturn dev.SetBoolean(%q, v)\n", n.Name)
+		fmt.Fprintf(w, "\t})\n}\n\n")
 	}
 }
 
@@ -359,15 +443,20 @@ func emitEnumeration(w *bytes.Buffer, recv string, n *parser.Node) {
 	if canRead {
 		fmt.Fprintf(w, "// Get%s returns the current %q enumeration value.\n", n.GoName, n.Name)
 		fmt.Fprintf(w, "func (c *%s) Get%s() (%s, error) {\n", recv, n.GoName, typeName)
-		fmt.Fprintf(w, "\tv, err := c.dev.GetEnumeration(%q)\n", n.Name)
-		fmt.Fprintf(w, "\treturn %s(v), err\n", typeName)
-		fmt.Fprintf(w, "}\n\n")
+		fmt.Fprintf(w, "\tvar v %s\n", typeName)
+		fmt.Fprintf(w, "\terr := c.caller.withNodeMap(func(dev runtime.NodeMap) error {\n")
+		fmt.Fprintf(w, "\t\traw, e := dev.GetEnumeration(%q)\n", n.Name)
+		fmt.Fprintf(w, "\t\tv = %s(raw)\n", typeName)
+		fmt.Fprintf(w, "\t\treturn e\n")
+		fmt.Fprintf(w, "\t})\n")
+		fmt.Fprintf(w, "\treturn v, err\n}\n\n")
 	}
 	if canWrite {
 		fmt.Fprintf(w, "// Set%s sets the %q enumeration value.\n", n.GoName, n.Name)
 		fmt.Fprintf(w, "func (c *%s) Set%s(v %s) error {\n", recv, n.GoName, typeName)
-		fmt.Fprintf(w, "\treturn c.dev.SetEnumeration(%q, int64(v))\n", n.Name)
-		fmt.Fprintf(w, "}\n\n")
+		fmt.Fprintf(w, "\treturn c.caller.withNodeMap(func(dev runtime.NodeMap) error {\n")
+		fmt.Fprintf(w, "\t\treturn dev.SetEnumeration(%q, int64(v))\n", n.Name)
+		fmt.Fprintf(w, "\t})\n}\n\n")
 	}
 }
 
@@ -378,14 +467,20 @@ func emitString(w *bytes.Buffer, recv string, n *parser.Node) {
 	if canRead {
 		fmt.Fprintf(w, "// Get%s returns the %q string value.\n", n.GoName, n.Name)
 		fmt.Fprintf(w, "func (c *%s) Get%s() (string, error) {\n", recv, n.GoName)
-		fmt.Fprintf(w, "\treturn c.dev.GetString(%q)\n", n.Name)
-		fmt.Fprintf(w, "}\n\n")
+		fmt.Fprintf(w, "\tvar v string\n")
+		fmt.Fprintf(w, "\terr := c.caller.withNodeMap(func(dev runtime.NodeMap) error {\n")
+		fmt.Fprintf(w, "\t\tvar e error\n")
+		fmt.Fprintf(w, "\t\tv, e = dev.GetString(%q)\n", n.Name)
+		fmt.Fprintf(w, "\t\treturn e\n")
+		fmt.Fprintf(w, "\t})\n")
+		fmt.Fprintf(w, "\treturn v, err\n}\n\n")
 	}
 	if canWrite {
 		fmt.Fprintf(w, "// Set%s sets the %q string value.\n", n.GoName, n.Name)
 		fmt.Fprintf(w, "func (c *%s) Set%s(v string) error {\n", recv, n.GoName)
-		fmt.Fprintf(w, "\treturn c.dev.SetString(%q, v)\n", n.Name)
-		fmt.Fprintf(w, "}\n\n")
+		fmt.Fprintf(w, "\treturn c.caller.withNodeMap(func(dev runtime.NodeMap) error {\n")
+		fmt.Fprintf(w, "\t\treturn dev.SetString(%q, v)\n", n.Name)
+		fmt.Fprintf(w, "\t})\n}\n\n")
 	}
 }
 

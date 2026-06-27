@@ -75,6 +75,7 @@ type rawInteger struct {
 
 type rawIntReg struct {
 	rawInteger
+	Address string `xml:"Address"`
 }
 
 type rawFloat struct {
@@ -93,6 +94,7 @@ type rawFloat struct {
 
 type rawFloatReg struct {
 	rawFloat
+	Address string `xml:"Address"`
 }
 
 type rawBoolean struct {
@@ -149,6 +151,7 @@ type rawString struct {
 
 type rawStringReg struct {
 	rawString
+	Address string `xml:"Address"`
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -218,6 +221,13 @@ type Node struct {
 	// Enumeration entries
 	EnumEntries []EnumEntry
 
+	// PValue links an SFNC feature to its backing register node name.
+	PValue string
+	// Address is the hex register address (for *Reg nodes).
+	Address string
+	// RegisterAddr is the resolved hex address for SFNC features via pValue.
+	RegisterAddr string
+
 	// For grouping: which category this belongs to (filled in post-process)
 	Category string
 }
@@ -284,7 +294,22 @@ func Parse(r io.Reader) (*RegisterDescription, error) {
 		markCategory(rd, cat, cat.GoName)
 	}
 
+	resolveRegisterAddresses(rd)
+
 	return rd, nil
+}
+
+func resolveRegisterAddresses(rd *RegisterDescription) {
+	for _, n := range rd.Nodes {
+		if n.PValue == "" {
+			continue
+		}
+		reg, ok := rd.Nodes[n.PValue]
+		if !ok || reg.Address == "" {
+			continue
+		}
+		n.RegisterAddr = reg.Address
+	}
 }
 
 func markCategory(rd *RegisterDescription, cat *Node, catGoName string) {
@@ -323,13 +348,17 @@ func collectGroup(rd *RegisterDescription, g rawGroup) {
 		rd.Nodes[v.Name] = integerNode(v)
 	}
 	for _, v := range g.IntRegs {
-		rd.Nodes[v.Name] = integerNode(v.rawInteger)
+		n := integerNode(v.rawInteger)
+		n.Address = normalizeAddr(v.Address)
+		rd.Nodes[v.Name] = n
 	}
 	for _, v := range g.Floats {
 		rd.Nodes[v.Name] = floatNode(v)
 	}
 	for _, v := range g.FloatRegs {
-		rd.Nodes[v.Name] = floatNode(v.rawFloat)
+		n := floatNode(v.rawFloat)
+		n.Address = normalizeAddr(v.Address)
+		rd.Nodes[v.Name] = n
 	}
 	for _, v := range g.Booleans {
 		rd.Nodes[v.Name] = boolNode(v)
@@ -344,7 +373,9 @@ func collectGroup(rd *RegisterDescription, g rawGroup) {
 		rd.Nodes[v.Name] = stringNode(v)
 	}
 	for _, v := range g.StringRegs {
-		rd.Nodes[v.Name] = stringNode(v.rawString)
+		n := stringNode(v.rawString)
+		n.Address = normalizeAddr(v.Address)
+		rd.Nodes[v.Name] = n
 	}
 }
 
@@ -361,6 +392,7 @@ func integerNode(v rawInteger) *Node {
 		Max:         v.Max,
 		Inc:         v.Inc,
 		Unit:        v.Unit,
+		PValue:      strings.TrimSpace(v.PValue),
 	}
 }
 
@@ -376,6 +408,7 @@ func floatNode(v rawFloat) *Node {
 		Min:         v.Min,
 		Max:         v.Max,
 		Unit:        v.Unit,
+		PValue:      strings.TrimSpace(v.PValue),
 	}
 }
 
@@ -388,6 +421,7 @@ func boolNode(v rawBoolean) *Node {
 		Description: v.Description,
 		AccessMode:  parseAccess(v.AccessMode),
 		Visibility:  parseVisibility(v.Visibility),
+		PValue:      strings.TrimSpace(v.PValue),
 	}
 }
 
@@ -400,6 +434,7 @@ func commandNode(v rawCommand) *Node {
 		Description: v.Description,
 		AccessMode:  AccessWO,
 		Visibility:  parseVisibility(v.Visibility),
+		PValue:      strings.TrimSpace(v.PValue),
 	}
 }
 
@@ -412,6 +447,7 @@ func enumNode(v rawEnumeration) *Node {
 		Description: v.Description,
 		AccessMode:  parseAccess(v.AccessMode),
 		Visibility:  parseVisibility(v.Visibility),
+		PValue:      strings.TrimSpace(v.PValue),
 	}
 	for i, e := range v.EnumEntries {
 		val := int64(i)
@@ -439,7 +475,17 @@ func stringNode(v rawString) *Node {
 		Description: v.Description,
 		AccessMode:  parseAccess(v.AccessMode),
 		Visibility:  parseVisibility(v.Visibility),
+		PValue:      strings.TrimSpace(v.PValue),
 	}
+}
+
+func normalizeAddr(s string) string {
+	s = strings.TrimSpace(s)
+	s = strings.TrimPrefix(strings.ToLower(s), "0x")
+	if len(s) > 8 {
+		s = s[len(s)-8:]
+	}
+	return s
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

@@ -1,13 +1,13 @@
 package runtime
 
 // Package runtime defines the NodeMap interface that generated code relies on,
-// and ships two implementations:
+// and ships GigE Vision transport with arv-tool-style auto-discovery:
 //
-//   - GigeNodeMap  – pure-Go GigE Vision transport (pkg/gige/control).
-//   - MockNodeMap  – an in-memory implementation for unit tests.
+//   - GigeConfig.WithNodeMap – discover, connect, call, disconnect per operation
+//   - GigeNodeMap          – persistent GigE Vision connection
+//   - MockNodeMap          – in-memory implementation for unit tests
 //
-// Generated code only imports the interface; you choose the implementation in
-// your main package, keeping the generated layer transport-agnostic.
+// Generated code calls WithNodeMap automatically when no device IP is configured.
 
 import (
 	"sync"

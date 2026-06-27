@@ -25,8 +25,12 @@ Generates a single Go file: `{output}/{pkg}.go` (e.g. `./camera/camera.go`).
 ```go
 import cam "your/module/camera"
 
-cam := cam.New(runtime.OpenGigeNodeMap(...))
-cam.TriggerControl.TriggerSoftware()
+// Auto-discover first GigE camera on each call (arv-tool style)
+cam := cam.New()
+port, err := cam.EthernetTransferCtl.GetTCPPort()
+
+// Or target a specific camera
+cam = cam.NewWithIP("en0", "192.168.1.108")
 ```
 
 ### Flags
@@ -110,17 +114,24 @@ Original repository: https://github.com/dougwatson/gige
 Tagged releases are indexed on [pkg.go.dev](https://pkg.go.dev/github.com/aaronmurniadi/genicam-codegen).
 
 ```bash
-git tag v0.0.7
-git push origin v0.0.7
+git tag v0.0.8
+git push origin v0.0.8
 ```
 
 Install a specific version:
 
 ```bash
-go install github.com/aaronmurniadi/genicam-codegen@v0.0.7
+go install github.com/aaronmurniadi/genicam-codegen@v0.0.8
 ```
 
 ## Changelog
+
+### v0.0.8
+
+- Generated methods auto-discover GigE cameras per call (arv-tool style)
+- Resolve `pValue` register addresses from XML into generated `featureAddresses` map
+- Add `New()`, `NewWithIP()`, and `NewWithNodeMap()` constructors
+- Add `GigeConfig.WithNodeMap` for ephemeral connect/disconnect in runtime
 
 ### v0.0.7
 

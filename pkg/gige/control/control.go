@@ -785,7 +785,7 @@ func GetCameraMap(controlConn *net.UDPConn, remoteAddr net.Addr) (cameraMap map[
 	cameraMap = make(map[uint64]Camera) //maps IP and port to camera
 	cameraReplyArr, err := GetCameras(remoteAddr, controlConn)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("discover cameras: %w", err)
 	}
 	//ModelName - Firmware - Width - Height - PixelFormat - GevSCPSPacketSize - GainAuto.tcpdump
 	fmt.Printf("## CameraIp        Id        Name           ModelName   Firmware   Width Height PixelFormat GainAuto GevSCPSPacketSize GevSCPD AcquisitionMode\n")
@@ -873,8 +873,7 @@ func GetCameraMap(controlConn *net.UDPConn, remoteAddr net.Addr) (cameraMap map[
 		cameraMap[ip_port] = camera
 	}
 	if len(cameraMap) == 0 {
-		println("no cameras connected to", controlConn.LocalAddr().String())
-		os.Exit(1)
+		return nil, fmt.Errorf("no cameras connected to %s", controlConn.LocalAddr().String())
 	}
 	return cameraMap, err
 }

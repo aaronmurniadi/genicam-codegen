@@ -63,6 +63,12 @@ func TestGenerateVisibilityFilter(t *testing.T) {
 	if !strings.Contains(src, "GetWidth") {
 		t.Fatal("beginner output missing GetWidth")
 	}
+	if !strings.Contains(src, "withNodeMap") {
+		t.Fatal("output missing withNodeMap auto-connect pattern")
+	}
+	if !strings.Contains(src, "func New()") {
+		t.Fatal("output missing New() constructor")
+	}
 	if strings.Contains(src, "GetGuruFeature") {
 		t.Fatal("beginner output should not include guru feature")
 	}

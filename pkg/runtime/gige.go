@@ -41,6 +41,9 @@ func NewGigeNodeMap(cam control.Camera, conn *net.UDPConn) *GigeNodeMap {
 // device is the local NIC (e.g. "en0"); pass "" to auto-detect.
 // cameraIP is the camera address or "255.255.255.255" to broadcast-discover.
 func OpenGigeNodeMap(device, cameraIP string) (*GigeNodeMap, error) {
+	if cameraIP == "" {
+		cameraIP = "255.255.255.255"
+	}
 	if device == "" {
 		device = control.DetectInterface(cameraIP)
 		if device == "" {
@@ -51,15 +54,27 @@ func OpenGigeNodeMap(device, cameraIP string) (*GigeNodeMap, error) {
 	conn := control.GetControlConnection(hostIP)
 	cameraMap, err := control.GetCameraMap(conn, &net.IPAddr{IP: net.ParseIP(cameraIP)})
 	if err != nil {
+		conn.Close()
 		return nil, fmt.Errorf("gige: discover cameras: %w", err)
 	}
 	if len(cameraMap) == 0 {
+		conn.Close()
 		return nil, fmt.Errorf("gige: no cameras found at %s", cameraIP)
 	}
 	for _, cam := range cameraMap {
 		return NewGigeNodeMap(cam, conn), nil
 	}
 	return nil, fmt.Errorf("gige: no cameras found")
+}
+
+// Close releases the underlying UDP control connection.
+func (g *GigeNodeMap) Close() error {
+	if g.conn != nil {
+		err := g.conn.Close()
+		g.conn = nil
+		return err
+	}
+	return nil
 }
 
 func (g *GigeNodeMap) registerName(feature string) (string, error) {
