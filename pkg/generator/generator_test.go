@@ -59,7 +59,7 @@ func TestGenerateVisibilityFilter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	src := string(beginner["genicam.go"])
+	src := string(beginner["cam.go"])
 	if !strings.Contains(src, "GetWidth") {
 		t.Fatal("beginner output missing GetWidth")
 	}
@@ -74,7 +74,7 @@ func TestGenerateVisibilityFilter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	src = string(guru["genicam.go"])
+	src = string(guru["cam.go"])
 	if !strings.Contains(src, "GetGuruFeature") {
 		t.Fatal("guru output missing GetGuruFeature")
 	}
@@ -97,12 +97,45 @@ func TestGenerateFormatsOutput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for name, src := range files {
-		if !strings.HasPrefix(string(src), "// Code generated") {
-			t.Fatalf("%s missing generated header", name)
-		}
-		if !strings.Contains(string(src), "package cam") {
-			t.Fatalf("%s missing package declaration", name)
-		}
+	if len(files) != 1 {
+		t.Fatalf("expected 1 file, got %d", len(files))
+	}
+	src, ok := files["cam.go"]
+	if !ok {
+		t.Fatal("expected cam.go output file")
+	}
+	if !strings.HasPrefix(string(src), "// Code generated") {
+		t.Fatal("cam.go missing generated header")
+	}
+	if !strings.Contains(string(src), "package cam") {
+		t.Fatal("cam.go missing package declaration")
+	}
+}
+
+func TestGenerateSingleFile(t *testing.T) {
+	path := filepath.Join("..", "parser", "testdata", "minimal.xml")
+	f, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	rd, err := parser.Parse(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	files, err := generator.Generate(rd, generator.Options{
+		PackageName: "cam",
+		OutputFile:  "camera_gen.go",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(files) != 1 {
+		t.Fatalf("expected 1 file, got %d", len(files))
+	}
+	if _, ok := files["camera_gen.go"]; !ok {
+		t.Fatal("expected camera_gen.go output file")
 	}
 }

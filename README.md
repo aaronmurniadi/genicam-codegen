@@ -13,16 +13,28 @@ This installs the `genicam-codegen` binary to `$GOPATH/bin` (or `$HOME/go/bin`).
 ## Usage
 
 ```bash
-genicam-codegen -i genicam.xml -o ./genicam
-genicam-codegen -i genicam.xml -o ./genicam -visibility guru
+# genicam.xml in the current directory (default input)
+genicam-codegen -o ./camera -pkg camera
+
+# explicit XML path
+genicam-codegen -i genicam.xml -o ./camera -pkg camera
+```
+
+Generates a single Go file: `{output}/{pkg}.go` (e.g. `./camera/camera.go`).
+
+```go
+import cam "your/module/camera"
+
+cam := cam.New(runtime.OpenGigeNodeMap(...))
+cam.TriggerControl.TriggerSoftware()
 ```
 
 ### Flags
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `-i` | Path to GenICam XML file (required) | |
-| `-o` | Output directory | `./genicam` |
+| `-i` | Path to GenICam XML file | `genicam.xml` |
+| `-o` | Output directory or `.go` file path | `./genicam` |
 | `-pkg` | Go package name | `genicam` |
 | `-runtime` | Runtime import path | module `pkg/runtime` |
 | `-visibility` | Minimum feature visibility: `beginner`, `expert`, `guru` | `beginner` |
@@ -93,7 +105,29 @@ Copyright (c) 2022 Doug Watson. Licensed under the [MIT License](pkg/gige/LICENS
 
 Original repository: https://github.com/dougwatson/gige
 
+## Publish
+
+Tagged releases are indexed on [pkg.go.dev](https://pkg.go.dev/github.com/aaronmurniadi/genicam-codegen).
+
+```bash
+git tag v0.0.7
+git push origin v0.0.7
+```
+
+Install a specific version:
+
+```bash
+go install github.com/aaronmurniadi/genicam-codegen@v0.0.7
+```
+
 ## Changelog
+
+### v0.0.7
+
+- Emit a single importable Go file (`{pkg}.go`) instead of multiple files
+- Default `-i` to `genicam.xml` in the current directory
+- Wire `Uncategorized` features onto `Device`
+- Honor `-runtime` import path in generated code
 
 ### v0.0.6
 

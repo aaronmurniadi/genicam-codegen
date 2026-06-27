@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 
 	"github.com/aaronmurniadi/genicam-codegen/pkg/generator"
 	"github.com/aaronmurniadi/genicam-codegen/pkg/parser"
@@ -19,23 +18,18 @@ func Run(args []string) int {
 	fs := flag.NewFlagSet("genicam-codegen", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: genicam-codegen -i <genicam.xml> -o <output_dir>\n\n")
+		fmt.Fprintf(os.Stderr, "Usage: genicam-codegen -i genicam.xml [-o output]\n\n")
 		fs.PrintDefaults()
 	}
 
-	xmlPath := fs.String("i", "", "path to GenICam XML file (required)")
-	outDir := fs.String("o", "./genicam", "output directory")
+	xmlPath := fs.String("i", "genicam.xml", "path to GenICam XML file")
+	out := fs.String("o", "./genicam", "output directory or .go file path")
 	pkg := fs.String("pkg", "genicam", "Go package name for generated code")
 	runtimePath := fs.String("runtime", "github.com/aaronmurniadi/genicam-codegen/pkg/runtime", "import path of the runtime package")
 	visibility := fs.String("visibility", "beginner", "minimum feature visibility: beginner, expert, guru")
 	verbose := fs.Bool("v", false, "verbose output")
 
 	if err := fs.Parse(args[1:]); err != nil {
-		return 2
-	}
-
-	if *xmlPath == "" {
-		fs.Usage()
 		return 2
 	}
 
@@ -57,7 +51,6 @@ func Run(args []string) int {
 	if *verbose {
 		log.Printf("model: %s %s", rd.VendorName, rd.ModelName)
 		log.Printf("nodes: %d", len(rd.Nodes))
-		log.Printf("categories: %d", len(rd.Categories))
 	}
 
 	vis, err := generator.NormalizeVisibility(*visibility)
@@ -76,21 +69,21 @@ func Run(args []string) int {
 		log.Fatalf("generate: %v", err)
 	}
 
-	if err := os.MkdirAll(*outDir, 0o755); err != nil {
+	dir, outPath := resolveOutput(*out, *pkg)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		log.Fatalf("mkdir: %v", err)
 	}
 
-	for name, src := range files {
-		path := filepath.Join(*outDir, name)
-		if err := os.WriteFile(path, src, 0o644); err != nil {
-			log.Fatalf("write %s: %v", path, err)
+	for _, src := range files {
+		if err := os.WriteFile(outPath, src, 0o644); err != nil {
+			log.Fatalf("write %s: %v", outPath, err)
 		}
 		if *verbose {
-			log.Printf("wrote %s (%d bytes)", path, len(src))
+			log.Printf("wrote %s (%d bytes)", outPath, len(src))
 		}
 	}
 
-	fmt.Printf("Generated %d file(s) in %s\n", len(files), *outDir)
+	fmt.Printf("Generated %s\n", outPath)
 	fmt.Printf("  Package    : %s\n", *pkg)
 	fmt.Printf("  Model      : %s %s\n", rd.VendorName, rd.ModelName)
 	fmt.Printf("  Visibility : %s\n", vis)
